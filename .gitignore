@@ -160,3 +160,7 @@ cython_debug/
 #.idea/
 *.txt
 !requirements.txt
+*.jpg
+*.png
+*.jpeg
+*.gif
