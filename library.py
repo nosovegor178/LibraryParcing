@@ -44,16 +44,18 @@ def get_book_image_url(book_url):
 
 
 def get_book_comments(book_url):
-    response = requests.get(book_url)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.text, 'lxml')
-    book_comments = soup.find_all('div', class_='texts')
-    founded_book_comments = []
-    for one_comment in book_comments:
-        comment_tag = one_comment.find('span')
-        founded_book_comments.append(comment_tag.text)
-        print(comment_tag)
-    return founded_book_comments
+    try:
+        response = requests.get(book_url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'lxml')
+        book_comments = soup.find_all('div', class_='texts')
+        founded_book_comments = []
+        for one_comment in book_comments:
+            comment_tag = one_comment.find('span')
+            founded_book_comments.append(comment_tag.text)
+        return founded_book_comments
+    except AttributeError:
+        return []
 
 
 def get_N_number_of_books(N):
@@ -73,9 +75,10 @@ def get_N_number_of_books(N):
             # download_file(response, image_name, 'images')
             # download_file(response, book_name)
             comments = get_book_comments(book_url)
-            print(comments)
         except requests.exceptions.HTTPError:
             print('Книга отсутствует')
 
 
-print(get_book_comments('https://tululu.org/b9'))
+comments = get_book_comments('https://tululu.org/b9')
+for comment in comments:
+    print(comment)
