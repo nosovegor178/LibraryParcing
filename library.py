@@ -51,8 +51,7 @@ def get_book_comments(book_url):
         book_comments = soup.find_all('div', class_='texts')
         founded_book_comments = []
         for one_comment in book_comments:
-            comment_tag = one_comment.find('span')
-            founded_book_comments.append(comment_tag.text)
+            founded_book_comments.append(one_comment.find('span').text)
         return founded_book_comments
     except AttributeError:
         return []
@@ -74,11 +73,7 @@ def get_N_number_of_books(N):
             # check_for_redirect(response)
             # download_file(response, image_name, 'images')
             # download_file(response, book_name)
-            comments = get_book_comments(book_url)
+            # comments = get_book_comments(book_url)
         except requests.exceptions.HTTPError:
             print('Книга отсутствует')
 
-
-comments = get_book_comments('https://tululu.org/b9')
-for comment in comments:
-    print(comment)
