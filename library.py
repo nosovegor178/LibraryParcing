@@ -5,8 +5,6 @@ from pathvalidate import sanitize_filename
 from urllib.parse import urljoin, urlparse
 
 
-directory = 'Books'
-
 
 def check_for_redirect(response):
     if response.history:
@@ -24,7 +22,6 @@ def download_file(url, filename, folder='Books'):
     with open((path_to_file), 'wb') as file:
         file.write(response.content)
     return path_to_file
-
 
 
 def find_author_and_book_name(response):
@@ -66,29 +63,39 @@ def get_book_genres(response):
         return []
 
 
-def parse_book_page(books_number):
+def parse_book_page(content, book_number):
     parsed_data = []
-    for book_number in range(1, books_number+1):
-        try:
-            url_for_downloading = 'https://tululu.org/txt.php?id={}'.format(book_number)
-            response = requests.get(url_for_downloading)
-            response.raise_for_status()
-            check_for_redirect(response)
-            
-            book_url = 'https://tululu.org/b{}'.format(book_number)
-            response = requests.get(book_url)
-            response.raise_for_status()
-            book_name = '{}. {}.txt'.format(book_number, find_author_and_book_name(response)[0])
-            # comments = get_book_comments(response)
-            # image_url = get_book_image_url(response)
-            # image_name = urlparse(image_url).path.split('/')[-1]       
-            genres = get_book_genres(response)
-            parsed_data.append({
-                'book_name': book_name,
-                'book_genres': genres
-            })
-        except requests.exceptions.HTTPError:
-            print('Книга отсутствует')
-    return parsed_data
+    try:
+        url_for_checking = 'https://tululu.org/txt.php?id={}'.format(book_number)
+        response = requests.get(url_for_checking)
+        response.raise_for_status()
+        check_for_redirect(response)
         
-print(parse_book_page(2))
+        book_name = '{}. {}.txt'.format(book_number, find_author_and_book_name(content)[0])
+        comments = get_book_comments(content)
+        image_url = get_book_image_url(content)
+        image_name = urlparse(image_url).path.split('/')[-1]
+        genres = get_book_genres(content)
+        parsed_data.append({
+            'book_name': book_name,
+            'book_genres': genres,
+            'comments': comments,
+            'image_url': image_url,
+            'image_name': image_name
+        })
+    except requests.exceptions.HTTPError:
+        print('Книга отсутствует')
+    return parsed_data
+
+
+def parse_all_books(books_number):
+    parsing_results = []
+    for book_number in range(1, books_number+1):
+        book_url = 'https://tululu.org/b{}'.format(book_number)
+        response = requests.get(book_url)
+        response.raise_for_status()
+        parsing_results.append(parse_book_page(response, book_number))
+    return parsing_results
+
+books_number = int(input('Введите желаемое количество книг: '))
+print(parse_all_books(books_number))
