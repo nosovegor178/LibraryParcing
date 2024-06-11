@@ -3,7 +3,7 @@ import os
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin, urlparse
-
+import argparse
 
 
 def check_for_redirect(response):
@@ -88,14 +88,23 @@ def parse_book_page(content, book_number):
     return parsed_data
 
 
-def parse_all_books(books_number):
+def parse_all_books(start_id, end_id):
     parsing_results = []
-    for book_number in range(1, books_number+1):
+    for book_number in range(start_id, end_id+1):
         book_url = 'https://tululu.org/b{}'.format(book_number)
         response = requests.get(book_url)
         response.raise_for_status()
         parsing_results.append(parse_book_page(response, book_number))
     return parsing_results
 
-books_number = int(input('Введите желаемое количество книг: '))
-print(parse_all_books(books_number))
+
+parser = argparse.ArgumentParser()
+parser.add_argument("start_id",
+                    help='The number of book from which you are going to download',
+                    type=int)
+parser.add_argument("end_id", 
+                    help='The number of book which will stop your downloading',
+                    type=int)
+args = parser.parse_args()
+
+print(parse_all_books(args.start_id, args.end_id))
