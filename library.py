@@ -34,7 +34,7 @@ def download_file(url, filename, folder='Books', params={}):
     return path_to_file
 
 
-def parse_book_page(response, template_url='https://tululu.org'):
+def parse_book_page(response, template_url):
     soup = BeautifulSoup(response.text, 'lxml')
     book_name, book_author = soup.find('h1').text.split(' :: ')
     book_image_url = soup.find('div', class_='bookimage').find('img')['src']
@@ -62,7 +62,7 @@ def download_all_books_and_their_images(book_number):
         book_url = 'https://tululu.org/b{}'.format(book_number)
         response = requests.get(book_url)
         response.raise_for_status()
-        parsed_page = parse_book_page(response)
+        parsed_page = parse_book_page(response, book_url)
         parsing_results.append(parsed_page)
         url = 'https://tululu.org/txt.php'
         params = {
