@@ -7,38 +7,26 @@ import argparse
 from time import sleep
 
 
-def do_request_to_site(book_number):
-    url = 'https://tululu.org/txt.php'
-    params = {
-        'id': '{}'.format(book_number)
-    }
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-    return response
-
-
-def check_for_redirect(book_number):
-    response = do_request_to_site(book_number)
+def check_for_redirect(response):
     if response.history:
         raise requests.exceptions.HTTPError
 
 
-def download_file(url, filename, folder='Books', params={}):
-    response = requests.get(url, params=params)
-    response.raise_for_status()
+def download_file(response, filename, folder='Books'):
+    check_for_redirect(response)
     sanitized_filename = sanitize_filename(filename)
     path_to_file = os.path.join(folder, sanitized_filename)
     os.makedirs(folder, exist_ok=True)
-    with open((path_to_file), 'wb') as file:
+    with open(path_to_file, 'wb') as file:
         file.write(response.content)
-    return path_to_file
 
 
-def parse_book_page(response, template_url):
+def parse_book_page(response, base_url):
+    check_for_redirect(response)
     soup = BeautifulSoup(response.text, 'lxml')
     book_name, book_author = soup.find('h1').text.split(' :: ')
     book_image_url = soup.find('div', class_='bookimage').find('img')['src']
-    image_url = urljoin(template_url, book_image_url)
+    image_url = urljoin(base_url, book_image_url)
     image_name = urlparse(image_url).path.split('/')[-1]
     book_comments = soup.find_all('div', class_='texts')
     comments = [comment.find('span').text for comment in book_comments]
@@ -55,33 +43,6 @@ def parse_book_page(response, template_url):
     return parsed_parametrs
 
 
-def download_all_books_and_their_images(book_number):
-    parsing_results = []
-    try:
-        check_for_redirect(book_number)
-        book_url = 'https://tululu.org/b{}'.format(book_number)
-        response = requests.get(book_url)
-        response.raise_for_status()
-        parsed_page = parse_book_page(response, book_url)
-        parsing_results.append(parsed_page)
-        url = 'https://tululu.org/txt.php'
-        params = {
-            'id': '{}'.format(book_number)
-        }
-        book_name = '{}. {}.txt'.format(book_number,
-                                        parsed_page['book_name'])
-        download_file(url, book_name, 'Books', params)
-        download_file(parsed_page['image_url'],
-                    parsed_page['image_name'],
-                    'images')
-    except requests.exceptions.HTTPError:
-        print('Книга отсутствует')
-    except requests.exceptions.ConnectionError:
-        print('Повторное подключение...')
-        sleep(20)
-    return parsing_results
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='''Downloading books and all info
@@ -96,5 +57,36 @@ if __name__ == '__main__':
                         will stop your downloading''',
                         type=int)
     args = parser.parse_args()
+
+
+    def download_book_and_its_image(book_url, text_page_response):
+        check_for_redirect(text_page_response)
+        parsing_results = []
+        response = requests.get(book_url)
+        response.raise_for_status()
+        parsed_page = parse_book_page(response, book_url)
+        parsing_results.append(parsed_page)
+        book_name = '{}. {}.txt'.format(book_number,
+                                        parsed_page['book_name']) 
+        download_file(text_page_response, book_name, 'Books')
+        response = requests.get(parsed_page['image_url'])
+        response.raise_for_status()
+        download_file(response,
+                    parsed_page['image_name'],
+                    'images')
+
+
     for book_number in range(args.start_id, args.end_id+1):
-        download_all_books_and_their_images(book_number)
+        try:
+            book_url = 'https://tululu.org/b{}'.format(book_number)
+            url = 'https://tululu.org/txt.php'
+            params = {
+                'id': '{}'.format(book_number)
+            }
+            response = requests.get(url, params=params)
+            download_book_and_its_image(book_url, response)
+        except requests.exceptions.HTTPError:
+            print('Книга отсутствует')
+        except requests.exceptions.ConnectionError:
+            print('Повторное подключение...')
+            sleep(20)
