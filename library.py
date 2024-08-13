@@ -48,6 +48,7 @@ def download_book_and_its_image(book_url, text_url):
         check_for_redirect(text_page_response)
         parsing_results = []
         response = requests.get(book_url)
+        check_for_redirect(response)
         response.raise_for_status()
         parsed_page = parse_book_page(response, book_url)
         parsing_results.append(parsed_page)
