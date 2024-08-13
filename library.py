@@ -43,7 +43,8 @@ def parse_book_page(response, base_url):
     return parsed_parametrs
 
 
-def download_book_and_its_image(book_url, text_page_response):
+def download_book_and_its_image(book_url, text_url):
+        text_page_response = requests.get(text_url, params=params)
         check_for_redirect(text_page_response)
         parsing_results = []
         response = requests.get(book_url)
@@ -79,12 +80,11 @@ if __name__ == '__main__':
     for book_number in range(args.start_id, args.end_id+1):
         try:
             book_url = 'https://tululu.org/b{}'.format(book_number)
-            url = 'https://tululu.org/txt.php'
+            text_url = 'https://tululu.org/txt.php'
             params = {
                 'id': '{}'.format(book_number)
             }
-            response = requests.get(url, params=params)
-            download_book_and_its_image(book_url, response)
+            download_book_and_its_image(book_url, text_url)
         except requests.exceptions.HTTPError:
             print('Книга отсутствует')
         except requests.exceptions.ConnectionError:
