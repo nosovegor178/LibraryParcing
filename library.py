@@ -13,7 +13,6 @@ def check_for_redirect(response):
 
 
 def download_file(response, filename, folder='Books'):
-    check_for_redirect(response)
     sanitized_filename = sanitize_filename(filename)
     path_to_file = os.path.join(folder, sanitized_filename)
     os.makedirs(folder, exist_ok=True)
