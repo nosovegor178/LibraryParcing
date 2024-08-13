@@ -43,23 +43,7 @@ def parse_book_page(response, base_url):
     return parsed_parametrs
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='''Downloading books and all info
-        about them in the certainly range'''
-    )
-    parser.add_argument('start_id',
-                        help='''The number of book from which
-                        you are going to download''',
-                        type=int)
-    parser.add_argument('end_id',
-                        help='''The number of book which
-                        will stop your downloading''',
-                        type=int)
-    args = parser.parse_args()
-
-
-    def download_book_and_its_image(book_url, text_page_response):
+def download_book_and_its_image(book_url, text_page_response):
         check_for_redirect(text_page_response)
         parsing_results = []
         response = requests.get(book_url)
@@ -74,6 +58,22 @@ if __name__ == '__main__':
         download_file(response,
                     parsed_page['image_name'],
                     'images')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='''Downloading books and all info
+        about them in the certainly range'''
+    )
+    parser.add_argument('start_id',
+                        help='''The number of book from which
+                        you are going to download''',
+                        type=int)
+    parser.add_argument('end_id',
+                        help='''The number of book which
+                        will stop your downloading''',
+                        type=int)
+    args = parser.parse_args()
 
 
     for book_number in range(args.start_id, args.end_id+1):
