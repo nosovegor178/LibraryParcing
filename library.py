@@ -21,7 +21,6 @@ def download_file(response, filename, folder='Books'):
 
 
 def parse_book_page(response, base_url):
-    check_for_redirect(response)
     soup = BeautifulSoup(response.text, 'lxml')
     book_name, book_author = soup.find('h1').text.split(' :: ')
     book_image_url = soup.find('div', class_='bookimage').find('img')['src']
