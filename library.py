@@ -42,23 +42,21 @@ def parse_book_page(response, base_url):
 
 
 def download_book_and_its_image(book_url, text_url):
-        text_page_response = requests.get(text_url, params=params)
-        text_page_response.raise_for_status()
-        check_for_redirect(text_page_response)
-        parsing_results = []
-        response = requests.get(book_url)
-        check_for_redirect(response)
-        response.raise_for_status()
-        parsed_page = parse_book_page(response, book_url)
-        parsing_results.append(parsed_page)
-        book_name = '{}. {}.txt'.format(book_number,
-                                        parsed_page['book_name']) 
-        download_file(text_page_response, book_name, 'Books')
-        response = requests.get(parsed_page['image_url'])
-        response.raise_for_status()
-        download_file(response,
-                    parsed_page['image_name'],
-                    'images')
+    text_page_response = requests.get(text_url, params=params)
+    text_page_response.raise_for_status()
+    check_for_redirect(text_page_response)
+    response = requests.get(book_url)
+    check_for_redirect(response)
+    response.raise_for_status()
+    parsed_page = parse_book_page(response, book_url)
+    book_name = '{}. {}.txt'.format(book_number,
+                                    parsed_page['book_name']) 
+    download_file(text_page_response, book_name, 'Books')
+    response = requests.get(parsed_page['image_url'])
+    response.raise_for_status()
+    download_file(response,
+                parsed_page['image_name'],
+                'images')
 
 
 if __name__ == '__main__':
@@ -79,7 +77,7 @@ if __name__ == '__main__':
 
     for book_number in range(args.start_id, args.end_id+1):
         try:
-            book_url = 'https://tululu.org/b{}'.format(book_number)
+            book_url = 'https://tululu.org/b{}/'.format(book_number)
             text_url = 'https://tululu.org/txt.php'
             params = {
                 'id': '{}'.format(book_number)
