@@ -66,18 +66,20 @@ if __name__ == '__main__':
         description='''Downloading books and all info
         about them in the certainly range'''
     )
-    parser.add_argument('start_page',
+    parser.add_argument('--start_page',
                         help='''The number of page from which
                         you are going to download''',
-                        type=int)
-    parser.add_argument('final_page',
+                        type=int,
+                        default=1)
+    parser.add_argument('--final_page',
                         help='''The number of page which
                         will stop your downloading''',
-                        type=int)
+                        type=int,
+                        default=702)
     args = parser.parse_args()
 
     parsed_pages_json = []
-    for page in range(args.start_page, args.final_page+1):
+    for page in range(args.start_page, args.final_page):
         try:
             url = f'https://tululu.org/l55/{page}/'
             response = requests.get(url)
@@ -86,6 +88,7 @@ if __name__ == '__main__':
             parsed_books = parse_book_page(books)
             parsed_pages_json.append(parsed_books)
             for book in parsed_books:
+                print(book['book_id'])
                 image_name = urlparse(book['image_url']).path.split('/')[-1]
                 download_image(image_name, book['image_url'])
                 text_url = 'https://tululu.org/txt.php'
