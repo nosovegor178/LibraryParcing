@@ -25,8 +25,8 @@ def parse_book_page(books):
     book_url_template = 'https://tululu.org/'
     parsed_books = []
     for book in books:
-        book_url_ending = book.select_one('a')['href']
-        book_url = urljoin(book_url_template, book_url_ending)
+        book_id = book.select_one('a')['href']
+        book_url = urljoin(book_url_template, book_id)
         book_page = requests.get(book_url)
         soup = BeautifulSoup(book_page.text, 'lxml')
         book_name, book_author = soup.select_one('h1').text.split(' :: ')
@@ -34,7 +34,7 @@ def parse_book_page(books):
         image_url = urljoin(book_url, book_image_url)
         book_comments = soup.select('.texts')
         comments = [comment.select_one('span').text for comment in book_comments]
-        genres = soup.select('.d_book a')
+        genres = soup.select('span.d_book a')
         genres = [genre.text for genre in genres]
         parsed_book = {
             'author': book_author.strip(),
@@ -42,23 +42,34 @@ def parse_book_page(books):
             'book_genres': genres,
             'comments': comments,
             'image_url': image_url,
-            'book_id': book_url_ending.strip('/')[1:]
+            'book_id': book_id.strip('/')[1:]
         }
         parsed_books.append(parsed_book)
     return parsed_books
 
 
-def download_image(image_name, image_url):
+def download_image(path_to_dir, image_name, image_url):
     response = requests.get(image_url)
     response.raise_for_status()
     download_file(response, image_name, 'images')
 
 
-def download_book(text_url, filename, params):
+def download_book(path_to_dir, text_url, filename, params):
     text_page_response = requests.get(text_url, params=params)
     text_page_response.raise_for_status()
     check_for_redirect(text_page_response)
     download_file(text_page_response, filename, 'Books')
+
+def parse_category():
+    parsed_pages_json = []
+    for page in range(args.start_page, args.final_page):
+        url = f'https://tululu.org/l55/{page}/'
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        books = soup.select('table.d_book')
+        parsed_books = parse_book_page(books)
+        parsed_pages_json.append(parsed_books)
+    return parsed_pages_json
 
 
 if __name__ == '__main__':
@@ -78,29 +89,20 @@ if __name__ == '__main__':
                         default=702)
     args = parser.parse_args()
 
-    parsed_pages_json = []
-    for page in range(args.start_page, args.final_page):
-        try:
-            url = f'https://tululu.org/l55/{page}/'
-            response = requests.get(url)
-            soup = BeautifulSoup(response.text, 'lxml')
-            books = soup.find_all('table', class_='d_book')
-            parsed_books = parse_book_page(books)
-            parsed_pages_json.append(parsed_books)
-            for book in parsed_books:
-                print(book['book_id'])
+    parsed_pages_json = parse_category()
+    for parsed_page in parsed_pages_json:
+        for book in parsed_page:
+            try:
                 image_name = urlparse(book['image_url']).path.split('/')[-1]
                 download_image(image_name, book['image_url'])
-                text_url = 'https://tululu.org/txt.php'
                 params = {
-                'id': '{}'.format(book['book_id'])
+                    'id': book['book_id']
                 }
-                book_name = book['book_name']
-                download_book(text_url, f'{book_name}.txt', params)
-        except requests.exceptions.HTTPError:
-            print('Книга отсутствует')
-        except requests.exceptions.ConnectionError:
-            print('Повторное подключение...')
-            sleep(20)
+                download_book('https://tululu.org/txt.php', book['book_name'], params)
+            except requests.exceptions.HTTPError:
+                print('Книга отсутствует')
+            except requests.exceptions.ConnectionError:
+                print('Повторное подключение...')
+                sleep(20)
     with open('books.json', 'w', encoding='utf-8') as file:
         json.dump(parsed_pages_json, file, ensure_ascii=False)
