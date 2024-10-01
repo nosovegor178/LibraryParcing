@@ -21,10 +21,10 @@ def download_file(response, filename, folder):
         file.write(response.content)
 
 
-def parse_book_page(books):
+def parse_books_page(path_to_result, page):
     book_url_template = 'https://tululu.org/'
     parsed_books = []
-    for book in books:
+    for book in page:
         book_id = book.select_one('a')['href']
         book_url = urljoin(book_url_template, book_id)
         book_page = requests.get(book_url)
@@ -41,8 +41,11 @@ def parse_book_page(books):
             'book_name': book_name.strip(),
             'book_genres': genres,
             'comments': comments,
+            'book_id': book_id.strip('/')[1:],
             'image_url': image_url,
-            'book_id': book_id.strip('/')[1:]
+            'image_name': urlparse(image_url).path.split('/')[-1],
+            'dest_img_url': f'{path_to_result}/images',
+            'dest_books_url': f'{path_to_result}/books'
         }
         parsed_books.append(parsed_book)
     return parsed_books
@@ -51,25 +54,49 @@ def parse_book_page(books):
 def download_image(path_to_dir, image_name, image_url):
     response = requests.get(image_url)
     response.raise_for_status()
-    download_file(response, image_name, f'{path_to_dir}/images')
+    download_file(response, image_name, path_to_dir)
 
 
 def download_book(path_to_dir, text_url, filename, params):
     text_page_response = requests.get(text_url, params=params)
     text_page_response.raise_for_status()
     check_for_redirect(text_page_response)
-    download_file(text_page_response, filename, f'{path_to_dir}/Books')
+    download_file(text_page_response, filename, path_to_dir)
 
-def parse_category():
-    parsed_pages_json = []
+
+def parse_category(path_to_result):
+    parsed_pages = []
     for page in range(args.start_page, args.final_page):
         url = f'https://tululu.org/l55/{page}/'
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'lxml')
         books = soup.select('table.d_book')
-        parsed_books = parse_book_page(books)
-        parsed_pages_json.append(parsed_books)
-    return parsed_pages_json
+        parsed_page = parse_books_page(path_to_result, books)
+        parsed_pages.append(parsed_page)
+    return parsed_pages
+
+
+def download_books_and_their_image(path_to_result):
+    parsed_pages = parse_category(path_to_result)
+    for parsed_page in parsed_pages:
+        for book in parsed_page:
+            try:
+                if not args.skip_imgs:
+                    download_image(book['dest_img_url'], book['image_name'], book['image_url'])
+                if not args.skip_txt:
+                    params = {
+                        'id': book['book_id']
+                    }
+                    book_name = book['book_name']
+                    download_book(book['dest_books_url'], 'https://tululu.org/txt.php', f'{book_name}.txt', params)
+            except requests.exceptions.HTTPError:
+                print('Книга отсутствует')
+            except requests.exceptions.ConnectionError:
+                print('Повторное подключение...')
+                sleep(20)
+    os.makedirs(args.dest_folder, exist_ok=True)
+    with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
+        json.dump(parsed_pages, file, ensure_ascii=False)
 
 
 if __name__ == '__main__':
@@ -84,12 +111,10 @@ if __name__ == '__main__':
                         default='result')
     parser.add_argument('--skip_imgs',
                         help='''Skip downloading images or not''',
-                        type=bool,
-                        default=False)
+                        action='store_true')
     parser.add_argument('--skip_txt',
                         help='''Skip downloading books or not''',
-                        type=bool,
-                        default=False)
+                        action='store_true')
     parser.add_argument('--start_page',
                         help='''The number of page from which
                         you are going to download''',
@@ -97,28 +122,9 @@ if __name__ == '__main__':
                         default=1)
     parser.add_argument('--final_page',
                         help='''The number of page which
-                        will stop your downloading''',
+                        will stop your downloading (without including)''',
                         type=int,
                         default=702)
     args = parser.parse_args()
 
-    parsed_pages_json = parse_category()
-    for parsed_page in parsed_pages_json:
-        for book in parsed_page:
-            try:
-                if not args.skip_imgs:
-                    image_name = urlparse(book['image_url']).path.split('/')[-1]
-                    download_image(args.dest_folder, image_name, book['image_url'])
-                if not args.skip_txt:
-                    params = {
-                        'id': book['book_id']
-                    }
-                    book_name = book['book_name']
-                    download_book(args.dest_folder, 'https://tululu.org/txt.php', f'{book_name}.txt', params)
-            except requests.exceptions.HTTPError:
-                print('Книга отсутствует')
-            except requests.exceptions.ConnectionError:
-                print('Повторное подключение...')
-                sleep(20)
-    with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
-        json.dump(parsed_pages_json, file, ensure_ascii=False)
+    download_books_and_their_image(args.dest_folder)
