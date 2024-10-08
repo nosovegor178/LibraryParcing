@@ -21,34 +21,38 @@ def download_file(response, filename, folder):
         file.write(response.content)
 
 
+def parse_book(path_to_result, book_id, book_url):
+    book_page = requests.get(book_url)
+    soup = BeautifulSoup(book_page.text, 'lxml')
+    book_name, book_author = soup.select_one('h1').text.split(' :: ')
+    book_image_url = soup.select_one('.bookimage img')['src']
+    image_url = urljoin(book_url, book_image_url)
+    book_comments = soup.select('.texts')
+    comments = [comment.select_one('span').text for comment in book_comments]
+    genres = soup.select('span.d_book a')
+    genres = [genre.text for genre in genres]
+    parsed_book = {
+        'author': book_author.strip(),
+        'book_name': book_name.strip(),
+        'book_genres': genres,
+        'comments': comments,
+        'book_id': book_id.strip('/')[1:],
+        'image_url': image_url,
+        'image_name': urlparse(image_url).path.split('/')[-1],
+        'dest_img_url': f'{path_to_result}/images',
+        'dest_books_url': f'{path_to_result}/books'
+    }
+    return parsed_book
+
+
 def parse_books_page(path_to_result, page):
-    book_url_template = 'https://tululu.org/'
-    parsed_books = []
+    parsed_page = []
     for book in page:
+        book_url_template = 'https://tululu.org/'
         book_id = book.select_one('a')['href']
         book_url = urljoin(book_url_template, book_id)
-        book_page = requests.get(book_url)
-        soup = BeautifulSoup(book_page.text, 'lxml')
-        book_name, book_author = soup.select_one('h1').text.split(' :: ')
-        book_image_url = soup.select_one('.bookimage img')['src']
-        image_url = urljoin(book_url, book_image_url)
-        book_comments = soup.select('.texts')
-        comments = [comment.select_one('span').text for comment in book_comments]
-        genres = soup.select('span.d_book a')
-        genres = [genre.text for genre in genres]
-        parsed_book = {
-            'author': book_author.strip(),
-            'book_name': book_name.strip(),
-            'book_genres': genres,
-            'comments': comments,
-            'book_id': book_id.strip('/')[1:],
-            'image_url': image_url,
-            'image_name': urlparse(image_url).path.split('/')[-1],
-            'dest_img_url': f'{path_to_result}/images',
-            'dest_books_url': f'{path_to_result}/books'
-        }
-        parsed_books.append(parsed_book)
-    return parsed_books
+        parsed_page.append(parse_book(path_to_result, book_id, book_url))
+    return parsed_page
 
 
 def download_image(path_to_dir, image_name, image_url):
@@ -64,26 +68,32 @@ def download_book(path_to_dir, text_url, filename, params):
     download_file(text_page_response, filename, path_to_dir)
 
 
-def parse_category(path_to_result):
+def parse_category(path_to_result, start_page, end_page):
     parsed_pages = []
-    for page in range(args.start_page, args.final_page):
-        url = f'https://tululu.org/l55/{page}/'
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'lxml')
-        books = soup.select('table.d_book')
-        parsed_page = parse_books_page(path_to_result, books)
-        parsed_pages.append(parsed_page)
+    for page in range(start_page, end_page):
+        try:
+            url = f'https://tululu.org/l55/{page}/'
+            response = requests.get(url)
+            response.raise_for_status()
+            check_for_redirect(response)
+            soup = BeautifulSoup(response.text, 'lxml')
+            books = soup.select('table.d_book')
+            parsed_page = parse_books_page(path_to_result, books)
+            parsed_pages.append(parsed_page)
+        except requests.exceptions.ConnectionError:
+                print('Повторное подключение...')
+                sleep(20)
     return parsed_pages
 
 
-def download_books_and_their_image(path_to_result):
-    parsed_pages = parse_category(path_to_result)
+def main(path_to_result, skipping_images, skipping_text, start_page, end_page):
+    parsed_pages = parse_category(path_to_result, start_page, end_page)
     for parsed_page in parsed_pages:
         for book in parsed_page:
             try:
-                if not args.skip_imgs:
+                if not skipping_images:
                     download_image(book['dest_img_url'], book['image_name'], book['image_url'])
-                if not args.skip_txt:
+                if not skipping_text:
                     params = {
                         'id': book['book_id']
                     }
@@ -94,8 +104,8 @@ def download_books_and_their_image(path_to_result):
             except requests.exceptions.ConnectionError:
                 print('Повторное подключение...')
                 sleep(20)
-    os.makedirs(args.dest_folder, exist_ok=True)
-    with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
+    os.makedirs(path_to_result, exist_ok=True)
+    with open(f'{path_to_result}/books.json', 'w', encoding='utf-8') as file:
         json.dump(parsed_pages, file, ensure_ascii=False)
 
 
@@ -127,4 +137,4 @@ if __name__ == '__main__':
                         default=702)
     args = parser.parse_args()
 
-    download_books_and_their_image(args.dest_folder)
+    main(args.dest_folder, args.skip_imgs, args.skip_txt, args.start_page, args.final_page)
