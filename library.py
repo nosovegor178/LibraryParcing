@@ -50,7 +50,13 @@ def parse_books_page(path_to_result, page):
         book_url_template = 'https://tululu.org/'
         book_id = book.select_one('a')['href']
         book_url = urljoin(book_url_template, book_id)
-        book_page = requests.get(book_url)
+        try:
+            book_page = requests.get(book_url)
+        except requests.exceptions.ConnectionError:
+            print('Повторное подключение...')
+            sleep(20)
+        except requests.exceptions.HTTPError:
+            print('Ошибка запроса')
         parsed_page.append(parse_book(path_to_result, book_id, book_url, book_page))
     return parsed_page
 
