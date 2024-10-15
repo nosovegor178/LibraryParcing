@@ -21,7 +21,7 @@ def download_file(response, filename, folder):
         file.write(response.content)
 
 
-def parse_book(path_to_result, book_id, book_url, book_page):
+def parse_book(path_to_result_dir, book_id, book_url, book_page):
     soup = BeautifulSoup(book_page.text, 'lxml')
     book_name, book_author = soup.select_one('h1').text.split(' :: ')
     book_image_url = soup.select_one('.bookimage img')['src']
@@ -38,8 +38,8 @@ def parse_book(path_to_result, book_id, book_url, book_page):
         'book_id': book_id.strip('/')[1:],
         'image_url': image_url,
         'image_name': urlparse(image_url).path.split('/')[-1],
-        'dest_img_url': f'{path_to_result}/images',
-        'dest_books_url': f'{path_to_result}/books'
+        'dest_img_url': f'{path_to_result_dir}/images',
+        'dest_books_url': f'{path_to_result_dir}/books'
     }
     return parsed_book
 
@@ -75,7 +75,7 @@ def download_book(path_to_dir, text_url, filename, params):
 
 
 def parse_category(path_to_result, start_page, end_page):
-    parsed_pages = []
+    parsed_category = []
     for page in range(start_page, end_page):
         try:
             url = f'https://tululu.org/l55/{page}/'
@@ -85,13 +85,13 @@ def parse_category(path_to_result, start_page, end_page):
             soup = BeautifulSoup(response.text, 'lxml')
             books = soup.select('table.d_book')
             parsed_page = parse_books_page(path_to_result, books)
-            parsed_pages.append(parsed_page)
+            parsed_category.append(parsed_page)
         except requests.exceptions.ConnectionError:
                 print('Повторное подключение...')
                 sleep(20)
         except requests.exceptions.HTTPError:
                 print('Ошибка запроса')
-    return parsed_pages
+    return parsed_category
 
 
 if __name__ == '__main__':
@@ -123,8 +123,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-    parsed_pages = parse_category(args.dest_folder, args.start_page, args.final_page)
-    for parsed_page in parsed_pages:
+    parsed_category = parse_category(args.dest_folder, args.start_page, args.final_page)
+    for parsed_page in parsed_category:
         for book in parsed_page:
             try:
                 if not args.skip_imgs:
@@ -142,4 +142,4 @@ if __name__ == '__main__':
                 sleep(20)
     os.makedirs(args.dest_folder, exist_ok=True)
     with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
-        json.dump(parsed_pages, file, ensure_ascii=False)
+        json.dump(parsed_category, file, ensure_ascii=False)
