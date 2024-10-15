@@ -86,29 +86,6 @@ def parse_category(path_to_result, start_page, end_page):
     return parsed_pages
 
 
-def main(path_to_result, skipping_images, skipping_text, start_page, end_page):
-    parsed_pages = parse_category(path_to_result, start_page, end_page)
-    for parsed_page in parsed_pages:
-        for book in parsed_page:
-            try:
-                if not skipping_images:
-                    download_image(book['dest_img_url'], book['image_name'], book['image_url'])
-                if not skipping_text:
-                    params = {
-                        'id': book['book_id']
-                    }
-                    book_name = book['book_name']
-                    download_book(book['dest_books_url'], 'https://tululu.org/txt.php', f'{book_name}.txt', params)
-            except requests.exceptions.HTTPError:
-                print('Книга отсутствует')
-            except requests.exceptions.ConnectionError:
-                print('Повторное подключение...')
-                sleep(20)
-    os.makedirs(path_to_result, exist_ok=True)
-    with open(f'{path_to_result}/books.json', 'w', encoding='utf-8') as file:
-        json.dump(parsed_pages, file, ensure_ascii=False)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='''Downloading books and all info
@@ -137,4 +114,24 @@ if __name__ == '__main__':
                         default=702)
     args = parser.parse_args()
 
-    main(args.dest_folder, args.skip_imgs, args.skip_txt, args.start_page, args.final_page)
+
+    parsed_pages = parse_category(args.dest_folder, args.start_page, args.final_page)
+    for parsed_page in parsed_pages:
+        for book in parsed_page:
+            try:
+                if not args.skip_imgs:
+                    download_image(book['dest_img_url'], book['image_name'], book['image_url'])
+                if not args.skip_txt:
+                    params = {
+                        'id': book['book_id']
+                    }
+                    book_name = book['book_name']
+                    download_book(book['dest_books_url'], 'https://tululu.org/txt.php', f'{book_name}.txt', params)
+            except requests.exceptions.HTTPError:
+                print('Книга отсутствует')
+            except requests.exceptions.ConnectionError:
+                print('Повторное подключение...')
+                sleep(20)
+    os.makedirs(args.dest_folder, exist_ok=True)
+    with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
+        json.dump(parsed_pages, file, ensure_ascii=False)
