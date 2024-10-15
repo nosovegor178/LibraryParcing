@@ -21,8 +21,7 @@ def download_file(response, filename, folder):
         file.write(response.content)
 
 
-def parse_book(path_to_result, book_id, book_url):
-    book_page = requests.get(book_url)
+def parse_book(path_to_result, book_id, book_url, book_page):
     soup = BeautifulSoup(book_page.text, 'lxml')
     book_name, book_author = soup.select_one('h1').text.split(' :: ')
     book_image_url = soup.select_one('.bookimage img')['src']
@@ -51,7 +50,8 @@ def parse_books_page(path_to_result, page):
         book_url_template = 'https://tululu.org/'
         book_id = book.select_one('a')['href']
         book_url = urljoin(book_url_template, book_id)
-        parsed_page.append(parse_book(path_to_result, book_id, book_url))
+        book_page = requests.get(book_url)
+        parsed_page.append(parse_book(path_to_result, book_id, book_url, book_page))
     return parsed_page
 
 
@@ -83,6 +83,8 @@ def parse_category(path_to_result, start_page, end_page):
         except requests.exceptions.ConnectionError:
                 print('Повторное подключение...')
                 sleep(20)
+        except requests.exceptions.HTTPError:
+                print('Ошибка запроса')
     return parsed_pages
 
 
