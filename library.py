@@ -42,23 +42,14 @@ def parse_book(book_id, book_url, book_page):
     return parsed_book
 
 
-def parse_books_page(books):
-    parsed_page = []
-    for book in books:
-        book_url_template = 'https://tululu.org/'
-        book_id = book.select_one('a')['href']
-        book_url = urljoin(book_url_template, book_id)
-        try:
-            book_page = requests.get(book_url)
-            book_page.raise_for_status()
-            check_for_redirect(book_page)
-        except requests.exceptions.ConnectionError:
-            print('Повторное подключение...')
-            sleep(20)
-        except requests.exceptions.HTTPError:
-            print('Ошибка запроса')
-        parsed_page.append(parse_book(book_id, book_url, book_page))
-    return parsed_page
+def parse_book_from_page(book):
+    book_id = book.select_one('a')['href']
+    book_url = urljoin(book_url_template, book_id)
+    book_page = requests.get(book_url)
+    book_page.raise_for_status()
+    check_for_redirect(book_page)
+    parsed_book = parse_book(book_id, book_url, book_page)
+    return parsed_book
 
 
 def download_image(path_to_dir, image_name, image_url):
@@ -72,11 +63,6 @@ def download_book(path_to_dir, text_url, filename, params):
     text_page_response.raise_for_status()
     check_for_redirect(text_page_response)
     download_file(text_page_response, filename, path_to_dir)
-
-
-def parse_pages(start_page, end_page):
-    
-    return parsed_pages
 
 
 if __name__ == '__main__':
@@ -107,7 +93,8 @@ if __name__ == '__main__':
                         default=702)
     args = parser.parse_args()
 
-
+    book_url_template = 'https://tululu.org/'
+    parsed_page = []
     parsed_pages = []
     for page in range(args.start_page, args.final_page):
             url = f'https://tululu.org/l55/{page}/'
@@ -116,7 +103,8 @@ if __name__ == '__main__':
             check_for_redirect(response)
             soup = BeautifulSoup(response.text, 'lxml')
             books = soup.select('table.d_book')
-            parsed_page = parse_books_page(books)
+            for book in books:
+                parsed_page.append(parse_book_from_page(book))
             parsed_pages.append(parsed_page)
             for book in parsed_page:
                 try:
