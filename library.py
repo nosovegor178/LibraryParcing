@@ -99,8 +99,14 @@ if __name__ == '__main__':
     for page in range(args.start_page, args.final_page):
             url = f'https://tululu.org/l55/{page}/'
             response = requests.get(url)
-            response.raise_for_status()
-            check_for_redirect(response)
+            try:
+                response.raise_for_status()
+                check_for_redirect(response)
+            except requests.exceptions.ConnectionError:
+                    print('Повторное подключение...')
+                    sleep(20)
+            except requests.exceptions.HTTPError:
+                    print('Книга не найдена')
             soup = BeautifulSoup(response.text, 'lxml')
             books = soup.select('table.d_book')
             for book in books:
