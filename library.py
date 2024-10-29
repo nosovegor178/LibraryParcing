@@ -42,16 +42,6 @@ def parse_book(book_id, book_url, book_page):
     return parsed_book
 
 
-def parse_book_from_page(book):
-    book_id = book.select_one('a')['href']
-    book_url = urljoin(book_url_template, book_id)
-    book_page = requests.get(book_url)
-    book_page.raise_for_status()
-    check_for_redirect(book_page)
-    parsed_book = parse_book(book_id, book_url, book_page)
-    return parsed_book
-
-
 def download_image(path_to_dir, image_name, image_url):
     response = requests.get(image_url)
     response.raise_for_status()
@@ -94,39 +84,51 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     book_url_template = 'https://tululu.org/'
-    parsed_page = []
     parsed_pages = []
     for page in range(args.start_page, args.final_page):
-            url = f'https://tululu.org/l55/{page}/'
+        parsed_page = []
+        url = f'https://tululu.org/l55/{page}/'
+        try:
             response = requests.get(url)
+            response.raise_for_status()
+            check_for_redirect(response)
+        except requests.exceptions.ConnectionError:
+                print('Повторное подключение...')
+                sleep(20)
+        except requests.exceptions.HTTPError:
+                print('Книга не найдена')
+        soup = BeautifulSoup(response.text, 'lxml')
+        books = soup.select('table.d_book')
+        for book in books:
             try:
-                response.raise_for_status()
-                check_for_redirect(response)
+                book_id = book.select_one('a')['href']
+                book_url = urljoin(book_url_template, book_id)
+                book_page = requests.get(book_url)
+                book_page.raise_for_status()
+                check_for_redirect(book_page)
+                parsed_book = parse_book(book_id, book_url, book_page)
+                parsed_page.append(parsed_book)
+            except requests.exceptions.ConnectionError:
+                print('Повторное подключение...')
+                sleep(20)
+            except requests.exceptions.HTTPError:
+                print('Книга не найдена')
+        parsed_pages.append(parsed_page)
+        for book in parsed_page:
+            try:
+                if not args.skip_imgs:
+                    download_image(f'{args.dest_folder}/image', book['image_name'], book['image_url'])
+                if not args.skip_txt:
+                    params = {
+                        'id': book['book_id']
+                    }
+                    book_name = book['book_name']
+                    download_book(f'{args.dest_folder}/books', 'https://tululu.org/txt.php', f'{book_name}.txt', params)
             except requests.exceptions.ConnectionError:
                     print('Повторное подключение...')
                     sleep(20)
             except requests.exceptions.HTTPError:
                     print('Книга не найдена')
-            soup = BeautifulSoup(response.text, 'lxml')
-            books = soup.select('table.d_book')
-            for book in books:
-                parsed_page.append(parse_book_from_page(book))
-            parsed_pages.append(parsed_page)
-            for book in parsed_page:
-                try:
-                    if not args.skip_imgs:
-                        download_image(f'{args.dest_folder}/image', book['image_name'], book['image_url'])
-                    if not args.skip_txt:
-                        params = {
-                            'id': book['book_id']
-                        }
-                        book_name = book['book_name']
-                        download_book(f'{args.dest_folder}/books', 'https://tululu.org/txt.php', f'{book_name}.txt', params)
-                except requests.exceptions.ConnectionError:
-                        print('Повторное подключение...')
-                        sleep(20)
-                except requests.exceptions.HTTPError:
-                        print('Книга не найдена')
     parsed_pages.append({'path_to_result' : args.dest_folder})
     os.makedirs(args.dest_folder, exist_ok=True)
     with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
