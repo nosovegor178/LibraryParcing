@@ -84,19 +84,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     book_url_template = 'https://tululu.org/'
-    parsed_pages = []
+    parsed_books = [{'path_to_result' : args.dest_folder}]
     for page in range(args.start_page, args.final_page):
-        parsed_page = []
         url = f'https://tululu.org/l55/{page}/'
         try:
             response = requests.get(url)
             response.raise_for_status()
             check_for_redirect(response)
         except requests.exceptions.ConnectionError:
-                print('Повторное подключение...')
-                sleep(20)
+            print('Повторное подключение...')
+            sleep(20)
         except requests.exceptions.HTTPError:
-                print('Книга не найдена')
+            print('Страница не найдена')
         soup = BeautifulSoup(response.text, 'lxml')
         books = soup.select('table.d_book')
         for book in books:
@@ -107,15 +106,7 @@ if __name__ == '__main__':
                 book_page.raise_for_status()
                 check_for_redirect(book_page)
                 parsed_book = parse_book(book_id, book_url, book_page)
-                parsed_page.append(parsed_book)
-            except requests.exceptions.ConnectionError:
-                print('Повторное подключение...')
-                sleep(20)
-            except requests.exceptions.HTTPError:
-                print('Книга не найдена')
-        parsed_pages.append(parsed_page)
-        for book in parsed_page:
-            try:
+                parsed_books.append(parsed_book)
                 if not args.skip_imgs:
                     download_image(f'{args.dest_folder}/image', book['image_name'], book['image_url'])
                 if not args.skip_txt:
@@ -125,11 +116,10 @@ if __name__ == '__main__':
                     book_name = book['book_name']
                     download_book(f'{args.dest_folder}/books', 'https://tululu.org/txt.php', f'{book_name}.txt', params)
             except requests.exceptions.ConnectionError:
-                    print('Повторное подключение...')
-                    sleep(20)
+                print('Повторное подключение...')
+                sleep(20)
             except requests.exceptions.HTTPError:
-                    print('Книга не найдена')
-    parsed_pages.append({'path_to_result' : args.dest_folder})
+                print('Книга не найдена')
     os.makedirs(args.dest_folder, exist_ok=True)
     with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
-        json.dump(parsed_pages, file, ensure_ascii=False)
+        json.dump(parsed_books, file, ensure_ascii=False)
