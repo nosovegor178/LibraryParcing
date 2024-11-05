@@ -91,15 +91,9 @@ if __name__ == '__main__':
             response = requests.get(url)
             response.raise_for_status()
             check_for_redirect(response)
-        except requests.exceptions.ConnectionError:
-            print('Повторное подключение...')
-            sleep(20)
-        except requests.exceptions.HTTPError:
-            print('Страница не найдена')
-        soup = BeautifulSoup(response.text, 'lxml')
-        books = soup.select('table.d_book')
-        for book in books:
-            try:
+            soup = BeautifulSoup(response.text, 'lxml')
+            books = soup.select('table.d_book')
+            for book in books:
                 book_id = book.select_one('a')['href']
                 book_url = urljoin(book_url_template, book_id)
                 book_page = requests.get(book_url)
@@ -115,11 +109,13 @@ if __name__ == '__main__':
                     }
                     book_name = book['book_name']
                     download_book(f'{args.dest_folder}/books', 'https://tululu.org/txt.php', f'{book_name}.txt', params)
-            except requests.exceptions.ConnectionError:
-                print('Повторное подключение...')
-                sleep(20)
-            except requests.exceptions.HTTPError:
-                print('Книга не найдена')
-    os.makedirs(args.dest_folder, exist_ok=True)
-    with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
-        json.dump(parsed_books, file, ensure_ascii=False)
+            os.makedirs(args.dest_folder, exist_ok=True)
+            with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
+                json.dump(parsed_books, file, ensure_ascii=False)
+        except requests.exceptions.ConnectionError:
+            print('Повторное подключение...')
+            sleep(20)
+        except requests.exceptions.HTTPError:
+            print('Страница не найдена')
+        
+    
