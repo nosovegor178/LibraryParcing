@@ -84,7 +84,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     book_url_template = 'https://tululu.org/'
-    parsed_books = [{'path_to_result' : args.dest_folder}]
+    parsed_books = []
     for page in range(args.start_page, args.final_page):
         url = f'https://tululu.org/l55/{page}/'
         try:
@@ -94,28 +94,33 @@ if __name__ == '__main__':
             soup = BeautifulSoup(response.text, 'lxml')
             books = soup.select('table.d_book')
             for book in books:
-                book_id = book.select_one('a')['href']
-                book_url = urljoin(book_url_template, book_id)
-                book_page = requests.get(book_url)
-                book_page.raise_for_status()
-                check_for_redirect(book_page)
-                parsed_book = parse_book(book_id, book_url, book_page)
-                parsed_books.append(parsed_book)
-                if not args.skip_imgs:
-                    download_image(f'{args.dest_folder}/image', book['image_name'], book['image_url'])
-                if not args.skip_txt:
-                    params = {
-                        'id': book['book_id']
-                    }
-                    book_name = book['book_name']
-                    download_book(f'{args.dest_folder}/books', 'https://tululu.org/txt.php', f'{book_name}.txt', params)
+                try:
+                    book_id = book.select_one('a')['href']
+                    book_url = urljoin(book_url_template, book_id)
+                    book_page = requests.get(book_url)
+                    book_page.raise_for_status()
+                    check_for_redirect(book_page)
+                    parsed_book = parse_book(book_id, book_url, book_page)
+                    parsed_books.append(parsed_book)
+                    if not args.skip_imgs:
+                        download_image(f'{args.dest_folder}/image', book['image_name'], book['image_url'])
+                    if not args.skip_txt:
+                        params = {
+                            'id': book['book_id']
+                        }
+                        book_name = book['book_name']
+                        download_book(f'{args.dest_folder}/books', 'https://tululu.org/txt.php', f'{book_name}.txt', params)
+                except requests.exceptions.ConnectionError:
+                    print('Повторное подключение...')
+                    sleep(20)
+                except requests.exceptions.HTTPError:
+                    print('Страница не найдена')
             os.makedirs(args.dest_folder, exist_ok=True)
-            with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
-                json.dump(parsed_books, file, ensure_ascii=False)
         except requests.exceptions.ConnectionError:
             print('Повторное подключение...')
             sleep(20)
         except requests.exceptions.HTTPError:
             print('Страница не найдена')
-        
+        with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
+            json.dump(parsed_books, file, ensure_ascii=False)
     
