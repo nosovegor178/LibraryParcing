@@ -121,6 +121,6 @@ if __name__ == '__main__':
             sleep(20)
         except requests.exceptions.HTTPError:
             print('Страница не найдена')
-        with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
-            json.dump(parsed_books, file, ensure_ascii=False)
+    with open(f'{args.dest_folder}/books.json', 'w', encoding='utf-8') as file:
+        json.dump(parsed_books, file, ensure_ascii=False)
     
