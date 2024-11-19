@@ -1,4 +1,3 @@
-from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from livereload import Server
