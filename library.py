@@ -103,12 +103,12 @@ if __name__ == '__main__':
                     parsed_book = parse_book(book_id, book_url, book_page)
                     parsed_books.append(parsed_book)
                     if not args.skip_imgs:
-                        download_image(f'{args.dest_folder}/image', book['image_name'], book['image_url'])
+                        download_image(f'{args.dest_folder}/image', parsed_book['image_name'], parsed_book['image_url'])
                     if not args.skip_txt:
                         params = {
-                            'id': book['book_id']
+                            'id': parsed_book['book_id']
                         }
-                        book_name = book['book_name']
+                        book_name = parsed_book['book_name']
                         download_book(f'{args.dest_folder}/books', 'https://tululu.org/txt.php', f'{book_name}.txt', params)
                 except requests.exceptions.ConnectionError:
                     print('Повторное подключение...')
