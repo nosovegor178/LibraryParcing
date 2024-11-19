@@ -1,6 +1,7 @@
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from livereload import Server
 
 
 def get_books():
@@ -11,18 +12,23 @@ def get_books():
         return books
 
 
-env = Environment(
-    loader=FileSystemLoader('.'),
-    autoescape=select_autoescape(['html', 'xml'])
-)
-template = env.get_template('templates/template.html')
-downloaded_books = get_books()
-rendered_page = template.render(
-    books=downloaded_books
-)
+def rebuild():
+    env = Environment(
+        loader=FileSystemLoader('.'),
+        autoescape=select_autoescape(['html', 'xml'])
+    )
+    template = env.get_template('templates/template.html')
+    downloaded_books = get_books()
+    rendered_page = template.render(
+        books=downloaded_books
+    )
 
-with open('templates/index.html', 'w', encoding="utf8") as file:
-    file.write(rendered_page)
+    with open('templates/index.html', 'w', encoding="utf8") as file:
+        file.write(rendered_page)
+    print('Server rebuilt')
 
-server = HTTPServer(('0.0.0.0', 8000), SimpleHTTPRequestHandler)
-server.serve_forever()
+rebuild()
+
+server = Server()
+server.watch('templates/*.html', rebuild)
+server.serve(root='templates/index.html')
