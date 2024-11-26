@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="container">
-    <div class="row justify-content-md-center">
+    <div class="row justify-content-md-center mt-3">
       <ul class="pagination">
         {% if current_page == 1 %}
           <li class="page-item disabled">
@@ -61,6 +61,7 @@
                 <div class="card-body">
                   <h5 class="card-title">{{book.book_name}}</h5>
                   <p class="card-text">{{book.author}}</p>
+                  <h6>{% for genre in book.book_genres %}<span class="badge badge-secondary mr-2">{{genre}}</span>{% endfor %}</h6>
                   <p class="card-text"><a href="../result/books/{{book.book_name}}.txt" target="_blank">Читать</a></p>
                 </div>
               </div>
