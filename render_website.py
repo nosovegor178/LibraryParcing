@@ -20,10 +20,11 @@ def rebuild():
     template = env.get_template('template.html')
     downloaded_books = get_books()
     downloaded_books = list(more_itertools.chunked(downloaded_books, 20))
-    print(downloaded_books)
     for page_number, page_json in enumerate(downloaded_books):
         rendered_page = template.render(
-            books=page_json
+            books=page_json,
+            pages_number=len(downloaded_books),
+            current_page=page_number+1
         )
 
         os.makedirs('pages', exist_ok=True)
