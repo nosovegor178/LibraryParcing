@@ -33,8 +33,6 @@ def rebuild():
             file.write(rendered_page)
     print('Server rebuilt')
 
-rebuild()
-
 server = Server()
-server.watch('pages/*.html', rebuild)
+server.watch('./template.html', rebuild())
 server.serve(root='pages/index1.html')
