@@ -6,7 +6,7 @@ import more_itertools
 
 
 def get_books():
-    with open("./result/books.json", "r", encoding="utf-8") as my_file:
+    with open("books.json", "r", encoding="utf-8") as my_file:
         file_content_json = my_file.read()
         books = json.loads(file_content_json)
         return books
