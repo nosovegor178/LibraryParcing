@@ -48,5 +48,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     rebuild(args.user_folder)
     server = Server()
-    server.watch('./template.html', rebuild(args.user_folder))
+    server.watch('./pages/*.html', rebuild(args.user_folder))
     server.serve(root='.', default_filename='./pages/index1.html')
