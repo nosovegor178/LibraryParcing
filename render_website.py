@@ -13,27 +13,35 @@ def get_books(user_path):
         return books
 
 
-def rebuild(user_path):
+def render_page(page_json, page_number, downloaded_books):
     env = Environment(
         loader=FileSystemLoader('.'),
         autoescape=select_autoescape(['html', 'xml'])
     )
-    template = env.get_template('./template.html')
-    downloaded_books = get_books(user_path)
-    number_of_books_on_page = 20
-    downloaded_books = list(more_itertools.chunked(downloaded_books,
-                                                   number_of_books_on_page))
-    for page_number, page_json in enumerate(downloaded_books):
-        rendered_page = template.render(
+    template = env.get_template('template.html')
+    
+    rendered_page = template.render(
             books=page_json,
             pages_number=len(downloaded_books),
             current_page=page_number+1
         )
+    
+    os.makedirs('./pages', exist_ok=True)
 
-        os.makedirs('./pages', exist_ok=True)
+    with open('./pages/index{}.html'.format(page_number+1), 'w', encoding="utf8") as file:
+        file.write(rendered_page)
 
-        with open('./pages/index{}.html'.format(page_number+1), 'w', encoding="utf8") as file:
-            file.write(rendered_page)
+
+def rebuild():
+    downloaded_books = get_books(args.user_folder)
+    number_of_books_on_page = 20
+    downloaded_books = list(more_itertools.chunked(downloaded_books,
+                                                   number_of_books_on_page))
+    for page_number, page_json in enumerate(downloaded_books):
+        render_page(page_json, page_number, downloaded_books)
+    print('Server rebuilt')
+        
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -46,7 +54,9 @@ if __name__ == '__main__':
                         type=str,
                         default='books.json')
     args = parser.parse_args()
-    rebuild(args.user_folder)
+    
+    
+
     server = Server()
-    server.watch('./pages/*.html', rebuild(args.user_folder))
+    server.watch('template.html', rebuild)
     server.serve(root='.', default_filename='./pages/index1.html')
