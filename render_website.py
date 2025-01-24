@@ -39,7 +39,6 @@ def rebuild():
                                                    number_of_books_on_page))
     for page_number, page_json in enumerate(downloaded_books):
         render_page(page_json, page_number, downloaded_books)
-    print('Server rebuilt')
         
 
 
